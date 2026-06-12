@@ -1,0 +1,124 @@
+/* ============================================
+   PRINT STYLESHEET
+   ============================================ */
+@media print {
+  /* Hide everything except receipt */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+
+  .sidebar,
+  .sidebar-overlay,
+  .topbar,
+  .offline-banner,
+  .toast-container,
+  .modal-overlay,
+  .page-header,
+  .receipt-actions,
+  .receipt-status-overlay,
+  .btn,
+  .nav-item,
+  .btn-sidebar-toggle {
+    display: none !important;
+  }
+
+  .app-layout {
+    display: block;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+  }
+
+  .page-container {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .receipt-wrapper {
+    max-width: 100% !important;
+  }
+
+  .receipt {
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 20px !important;
+    background: white !important;
+  }
+
+  .receipt-header {
+    border-bottom: 2px solid black !important;
+  }
+
+  .receipt-company-name,
+  .receipt-company-name-ne {
+    color: black !important;
+  }
+
+  .receipt-logo {
+    border-color: black !important;
+    color: black !important;
+  }
+
+  .receipt-address {
+    color: #333 !important;
+  }
+
+  .receipt-table {
+    border-color: black !important;
+  }
+
+  .receipt-table th,
+  .receipt-table td {
+    border-color: #333 !important;
+    color: black !important;
+  }
+
+  .receipt-table th {
+    background: #f0f0f0 !important;
+  }
+
+  .receipt-table tfoot td {
+    background: #f0f0f0 !important;
+    border-top-color: black !important;
+  }
+
+  .receipt-meta-label,
+  .receipt-meta-value {
+    color: black !important;
+  }
+
+  .receipt-words {
+    background: #f8f8f8 !important;
+  }
+
+  .receipt-words-label,
+  .receipt-words-value {
+    color: black !important;
+  }
+
+  .receipt-signature-line {
+    border-top-color: black !important;
+  }
+
+  .receipt-signature-label {
+    color: #333 !important;
+  }
+
+  .receipt-bill-no {
+    color: #cc0000 !important;
+  }
+
+  /* Page breaks */
+  .receipt {
+    page-break-inside: avoid;
+  }
+
+  @page {
+    margin: 15mm;
+    size: A4;
+  }
+}
