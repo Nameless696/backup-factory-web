@@ -1,5 +1,6 @@
 // ============================================
 // TRANSACTIONS PAGE (Billing)
+// Components: Payment Quick Edit, RBAC
 // ============================================
 
 const TransactionsPage = (() => {
@@ -22,6 +23,7 @@ const TransactionsPage = (() => {
     const customers = await appDb.customers.toArray();
     const customerMap = {};
     customers.forEach(c => customerMap[c.id] = c.name);
+    const canQuickEdit = Auth.hasPermission('quick_edit_payment');
 
     // Sort by date desc then id desc
     transactions.sort((a, b) => {
@@ -35,14 +37,17 @@ const TransactionsPage = (() => {
     } else {
       rowsHtml = transactions.map(t => {
         const statusBadge = getStatusBadge(t.paymentStatus);
+        const clickableStatus = canQuickEdit && t.dueAmount > 0
+          ? `<span class="clickable-status" data-action="quick-edit-payment" data-id="${t.id}" data-due="${t.dueAmount}" data-total="${t.totalAmount}" data-paid="${t.paidAmount}" title="${I18n.t('quick_payment')}">${statusBadge}</span>`
+          : statusBadge;
         return `
-          <tr>
+          <tr data-status="${t.paymentStatus}">
             <td><strong>${t.billNo}</strong></td>
             <td>${I18n.formatDate(t.date)}</td>
             <td>${customerMap[t.customerId] || '-'}</td>
             <td><strong>${I18n.formatCurrencyShort(t.totalAmount)}</strong></td>
             <td>${I18n.formatCurrencyShort(t.paidAmount)}</td>
-            <td>${statusBadge}</td>
+            <td>${clickableStatus}</td>
             <td>
               <button class="btn btn-ghost btn-sm" data-action="view-receipt" data-id="${t.id}">
                 <span>👁</span> <span data-i18n="view">View</span>
@@ -53,17 +58,21 @@ const TransactionsPage = (() => {
       }).join('');
     }
 
+    const canCreate = Auth.hasPermission('create_transaction');
+
     return `
       <div class="page-header">
         <div class="page-header-left">
           <h2 data-i18n="transactions_title">Transactions</h2>
           <p data-i18n="transactions_subtitle">View and create billing transactions</p>
         </div>
-        <div class="page-header-actions">
-          <button class="btn btn-primary" id="btn-new-transaction">
-            <span>+</span> <span data-i18n="create_transaction">Create Transaction</span>
-          </button>
-        </div>
+        ${canCreate ? `
+          <div class="page-header-actions">
+            <button class="btn btn-primary" id="btn-new-transaction">
+              <span>+</span> <span data-i18n="create_transaction">Create Transaction</span>
+            </button>
+          </div>
+        ` : ''}
       </div>
 
       <div class="actions-row">
@@ -97,6 +106,37 @@ const TransactionsPage = (() => {
               ${rowsHtml}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Quick Payment Edit Modal -->
+      <div class="modal-overlay" id="quick-payment-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h3 class="modal-title" data-i18n="quick_payment">${I18n.t('quick_payment')}</h3>
+            <button class="modal-close" data-action="close-quick-payment">✕</button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="qp-tx-id">
+            <div class="qp-current-status" id="qp-current-status"></div>
+            <div class="qp-preset-buttons">
+              <button class="btn btn-success" id="btn-qp-full" data-action="qp-full">
+                <span>✓</span> <span data-i18n="mark_paid">${I18n.t('mark_paid')}</span>
+              </button>
+              <button class="btn btn-warning" id="btn-qp-half" data-action="qp-half">
+                <span>½</span> <span data-i18n="half_payment">${I18n.t('half_payment')}</span>
+              </button>
+            </div>
+            <div class="qp-custom-section">
+              <label class="form-label" data-i18n="custom_amount">${I18n.t('custom_amount')}</label>
+              <div class="qp-custom-input-row">
+                <input type="number" class="form-input" id="qp-custom-amount" min="0" step="0.01" data-i18n="enter_amount" placeholder="Enter amount...">
+                <button class="btn btn-primary" id="btn-qp-custom" data-action="qp-custom">
+                  <span data-i18n="save">${I18n.t('save')}</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -264,6 +304,14 @@ const TransactionsPage = (() => {
       container.querySelectorAll('.filter-tab').forEach(tab => {
         tab.addEventListener('click', () => handleFilter(tab));
       });
+
+      // Close quick payment modal on overlay click
+      const qpModal = document.getElementById('quick-payment-modal');
+      if (qpModal) {
+        qpModal.addEventListener('click', (e) => {
+          if (e.target === qpModal) closeQuickPayment();
+        });
+      }
     }
   }
 
@@ -309,7 +357,141 @@ const TransactionsPage = (() => {
       window.location.hash = `#/receipt/${id}`;
       return;
     }
+
+    // Quick payment edit actions
+    if (action === 'quick-edit-payment') {
+      const el = e.target.closest('[data-action]');
+      openQuickPayment(el.dataset.id, el.dataset.due, el.dataset.total, el.dataset.paid);
+      return;
+    }
+    if (action === 'close-quick-payment') {
+      closeQuickPayment();
+      return;
+    }
+    if (action === 'qp-full') {
+      applyQuickPayment('full');
+      return;
+    }
+    if (action === 'qp-half') {
+      applyQuickPayment('half');
+      return;
+    }
+    if (action === 'qp-custom') {
+      applyQuickPayment('custom');
+      return;
+    }
   }
+
+  // ============================================
+  // QUICK PAYMENT EDIT (Component 6)
+  // ============================================
+
+  let qpTxData = null;
+
+  function openQuickPayment(txId, dueAmount, totalAmount, paidAmount) {
+    const modal = document.getElementById('quick-payment-modal');
+    if (!modal) return;
+
+    qpTxData = {
+      id: parseInt(txId),
+      due: parseFloat(dueAmount),
+      total: parseFloat(totalAmount),
+      paid: parseFloat(paidAmount)
+    };
+
+    document.getElementById('qp-tx-id').value = txId;
+
+    const statusEl = document.getElementById('qp-current-status');
+    if (statusEl) {
+      statusEl.innerHTML = `
+        <div class="qp-info-row">
+          <span data-i18n="total_amount">${I18n.t('total_amount')}</span>
+          <strong>${I18n.formatCurrencyShort(qpTxData.total)}</strong>
+        </div>
+        <div class="qp-info-row">
+          <span data-i18n="paid_amount">${I18n.t('paid_amount')}</span>
+          <span>${I18n.formatCurrencyShort(qpTxData.paid)}</span>
+        </div>
+        <div class="qp-info-row due">
+          <span data-i18n="due_amount">${I18n.t('due_amount')}</span>
+          <strong>${I18n.formatCurrencyShort(qpTxData.due)}</strong>
+        </div>
+      `;
+    }
+
+    // Set half payment button text
+    const halfBtn = document.getElementById('btn-qp-half');
+    if (halfBtn) {
+      const halfAmt = Math.round(qpTxData.due / 2);
+      halfBtn.title = I18n.formatCurrencyShort(halfAmt);
+    }
+
+    document.getElementById('qp-custom-amount').value = '';
+    document.getElementById('qp-custom-amount').max = qpTxData.due;
+    modal.classList.add('active');
+    I18n.translatePage();
+  }
+
+  function closeQuickPayment() {
+    document.getElementById('quick-payment-modal')?.classList.remove('active');
+    qpTxData = null;
+  }
+
+  async function applyQuickPayment(type) {
+    if (!qpTxData) return;
+
+    let paymentAmount = 0;
+
+    switch (type) {
+      case 'full':
+        paymentAmount = qpTxData.due;
+        break;
+      case 'half':
+        paymentAmount = Math.round(qpTxData.due / 2);
+        break;
+      case 'custom':
+        paymentAmount = parseFloat(document.getElementById('qp-custom-amount')?.value) || 0;
+        break;
+    }
+
+    if (paymentAmount <= 0) {
+      Toast.warning(I18n.t('error_invalid_amount'));
+      return;
+    }
+
+    if (paymentAmount > qpTxData.due) {
+      Toast.warning(I18n.t('error_amount_exceeds'));
+      return;
+    }
+
+    const tx = await appDb.transactions.get(qpTxData.id);
+    if (!tx) return;
+
+    const newPaid = tx.paidAmount + paymentAmount;
+    const newDue = Math.max(0, tx.totalAmount - newPaid);
+    let newStatus = 'due';
+    if (newDue <= 0) newStatus = 'paid';
+    else if (newPaid > 0) newStatus = 'partial';
+
+    await appDb.transactions.update(qpTxData.id, {
+      paidAmount: newPaid,
+      dueAmount: newDue,
+      paymentStatus: newStatus,
+      syncStatus: 'pending',
+      updatedAt: new Date().toISOString()
+    });
+
+    await dbHelpers.addToSyncQueue('update', 'transactions', qpTxData.id);
+
+    closeQuickPayment();
+    Toast.success(I18n.t('payment_updated'));
+    Sync.updatePendingCount();
+    Router.navigate(window.location.hash);
+  }
+
+  // ============================================
+  // BILLING FORM LOGIC
+  // ============================================
 
   async function renderItemRows() {
     const products = await appDb.products.toArray();
@@ -533,9 +715,7 @@ const TransactionsPage = (() => {
       if (filter === 'all') {
         row.style.display = '';
       } else {
-        const statusBadge = row.querySelector('.badge');
-        const statusText = statusBadge?.querySelector('[data-i18n]')?.getAttribute('data-i18n') || '';
-        row.style.display = statusText === filter ? '' : 'none';
+        row.style.display = row.dataset.status === filter ? '' : 'none';
       }
     });
   }

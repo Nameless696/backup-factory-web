@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Factory App — Test Runner</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #0f172a; color: #e2e8f0;
+      padding: 32px; min-height: 100vh;
+    }
+    h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 8px; color: #a5b4fc; }
+    .subtitle { color: #64748b; margin-bottom: 32px; font-size: 0.875rem; }
+    .test-suite { margin-bottom: 24px; }
+    .suite-title {
+      font-size: 0.9rem; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      padding: 8px 0; border-bottom: 1px solid #1e293b; margin-bottom: 8px;
+    }
+    .test-result {
+      padding: 8px 14px; border-radius: 8px; margin-bottom: 4px;
+      font-size: 0.8125rem; display: flex; align-items: center; gap: 10px;
+    }
+    .test-result.pass { background: rgba(16, 185, 129, 0.08); color: #34d399; }
+    .test-result.fail { background: rgba(244, 63, 94, 0.08); color: #fb7185; }
+    .test-result .icon { font-size: 1rem; }
+    .test-result .error-msg { color: #fb7185; font-size: 0.75rem; margin-left: auto; }
+    .summary {
+      margin-top: 32px; padding: 20px; border-radius: 12px;
+      background: #1e293b; border: 1px solid #334155;
+      display: flex; gap: 24px; font-size: 0.875rem;
+    }
+    .summary .stat { font-weight: 700; }
+    .summary .pass-count { color: #34d399; }
+    .summary .fail-count { color: #fb7185; }
+    .summary .total-count { color: #a5b4fc; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Factory App Test Runner</h1>
+  <p class="subtitle">Unit tests for Auth, I18n, and business logic</p>
+  <div id="test-output"></div>
+  <div id="test-summary" class="summary"></div>
+
+  <!-- Load app dependencies in order -->
+  <script src="../js/auth.js"></script>
+  <script src="../js/i18n.js"></script>
+  <script src="tests.js"></script>
+</body>
+</html>

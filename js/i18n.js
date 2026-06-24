@@ -40,9 +40,13 @@ const I18n = (() => {
   }
 
   function t(key) {
-    if (!loaded) return key;
+    if (!loaded) return key.replace(/_/g, ' ');
     const val = translations[currentLang]?.[key];
-    return val !== undefined ? val : (translations['en']?.[key] || key);
+    if (val !== undefined) return val;
+    const enVal = translations['en']?.[key];
+    if (enVal !== undefined) return enVal;
+    // Fallback: replace underscores with spaces for readability
+    return key.replace(/_/g, ' ');
   }
 
   function translatePage() {

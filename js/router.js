@@ -11,7 +11,9 @@ const Router = (() => {
   }
 
   function matchRoute(hash) {
-    const path = hash.replace('#', '') || '/login';
+    // Strip query parameters before matching
+    const fullPath = hash.replace('#', '') || '/login';
+    const path = fullPath.split('?')[0];
 
     for (const route of routes) {
       // Handle parametric routes like /receipt/:id

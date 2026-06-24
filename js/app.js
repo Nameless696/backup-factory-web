@@ -153,7 +153,7 @@ function updateSidebarUser() {
   const avatarEl = document.getElementById('sidebar-user-avatar');
 
   if (nameEl) nameEl.textContent = user.displayName;
-  if (roleEl) roleEl.textContent = user.role;
+  if (roleEl) roleEl.textContent = I18n.t(user.role === 'admin' ? 'role_admin' : 'role_staff');
   if (avatarEl) avatarEl.textContent = Auth.getInitials();
 
   // Show/hide admin nav

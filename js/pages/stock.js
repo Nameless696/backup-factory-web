@@ -1,5 +1,6 @@
 // ============================================
 // STOCK MANAGEMENT PAGE
+// Components: Add/Remove stock, improved UX, RBAC
 // ============================================
 
 const StockPage = (() => {
@@ -7,15 +8,19 @@ const StockPage = (() => {
   async function render() {
     const products = await appDb.products.toArray();
     const isAdmin = Auth.isAdmin();
+    const canAdjust = Auth.hasPermission('adjust_stock');
+    const canEdit = Auth.hasPermission('edit_product');
+    const canAdd = Auth.hasPermission('add_product');
 
     // Status counts
     const inStock = products.filter(p => p.quantity > 10).length;
     const lowStock = products.filter(p => p.quantity > 0 && p.quantity <= 10).length;
     const outOfStock = products.filter(p => p.quantity <= 0).length;
+    const totalValue = products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
 
     let rowsHtml = '';
     if (products.length === 0) {
-      rowsHtml = `<tr><td colspan="${isAdmin ? 8 : 6}" class="table-empty"><div class="table-empty-icon">📦</div><span data-i18n="no_products">No products yet</span></td></tr>`;
+      rowsHtml = `<tr><td colspan="${canAdjust ? 7 : 5}" class="table-empty"><div class="table-empty-icon">📦</div><span data-i18n="no_products">No products yet</span></td></tr>`;
     } else {
       rowsHtml = products.map(p => {
         const statusInfo = getStockStatusBadge(p.quantity);
@@ -28,13 +33,20 @@ const StockPage = (() => {
             <td>${I18n.formatNumber(p.quantity)} <span class="text-muted" data-i18n="${unitKey}">${I18n.t(unitKey)}</span></td>
             <td>${I18n.formatCurrencyShort(p.price)}</td>
             <td>${statusInfo}</td>
-            ${isAdmin ? `
+            ${canAdjust ? `
               <td>
-                <div class="product-actions">
-                  <input type="number" class="quick-stock-input" data-id="${p.id}" placeholder="0" min="0">
-                  <button class="btn btn-success btn-sm" data-action="quick-add-stock" data-id="${p.id}" data-i18n="add_stock">Add Stock</button>
+                <div class="product-actions stock-adjust-actions">
+                  <input type="number" class="quick-stock-input" data-id="${p.id}" placeholder="0" min="1" value="">
+                  <button class="btn btn-success btn-sm" data-action="quick-add-stock" data-id="${p.id}" title="${I18n.t('add_stock')}">
+                    <span>+</span>
+                  </button>
+                  <button class="btn btn-warning btn-sm" data-action="quick-remove-stock" data-id="${p.id}" title="${I18n.t('remove_stock')}">
+                    <span>−</span>
+                  </button>
                 </div>
               </td>
+            ` : ''}
+            ${canEdit ? `
               <td>
                 <div class="product-actions">
                   <button class="btn btn-secondary btn-sm" data-action="edit-product" data-id="${p.id}">✏️</button>
@@ -53,7 +65,7 @@ const StockPage = (() => {
           <h2 data-i18n="stock_title">Stock Management</h2>
           <p data-i18n="stock_subtitle">Manage your products and inventory</p>
         </div>
-        ${isAdmin ? `
+        ${canAdd ? `
           <div class="page-header-actions">
             <button class="btn btn-primary" id="btn-add-product">
               <span>+</span> <span data-i18n="add_product">Add Product</span>
@@ -94,7 +106,8 @@ const StockPage = (() => {
                 <th data-i18n="quantity">Quantity</th>
                 <th data-i18n="price_rate">Price/Rate</th>
                 <th data-i18n="status">Status</th>
-                ${isAdmin ? `<th data-i18n="add_stock">Add Stock</th><th data-i18n="actions">Actions</th>` : ''}
+                ${canAdjust ? `<th data-i18n="adjust_stock">Adjust Stock</th>` : ''}
+                ${canEdit ? `<th data-i18n="actions">Actions</th>` : ''}
               </tr>
             </thead>
             <tbody id="stock-tbody">
@@ -198,6 +211,9 @@ const StockPage = (() => {
       case 'quick-add-stock':
         quickAddStock(e.target.closest('[data-action]').dataset.id);
         break;
+      case 'quick-remove-stock':
+        quickRemoveStock(e.target.closest('[data-action]').dataset.id);
+        break;
       case 'edit-product':
         editProduct(e.target.closest('[data-action]').dataset.id);
         break;
@@ -229,6 +245,7 @@ const StockPage = (() => {
     }
 
     modal.classList.add('active');
+    I18n.translatePage();
   }
 
   function closeProductModal() {
@@ -275,7 +292,10 @@ const StockPage = (() => {
   async function quickAddStock(productId) {
     const input = document.querySelector(`.quick-stock-input[data-id="${productId}"]`);
     const addQty = parseInt(input?.value) || 0;
-    if (addQty <= 0) return;
+    if (addQty <= 0) {
+      Toast.warning(I18n.t('error_invalid_amount'));
+      return;
+    }
 
     const product = await appDb.products.get(parseInt(productId));
     if (!product) return;
@@ -289,7 +309,37 @@ const StockPage = (() => {
     });
     await dbHelpers.addToSyncQueue('update', 'products', parseInt(productId));
 
-    Toast.success(I18n.t('success_stock_added'));
+    Toast.success(`+${addQty} ${I18n.t('success_stock_added')}`);
+    Sync.updatePendingCount();
+    Router.navigate(window.location.hash);
+  }
+
+  async function quickRemoveStock(productId) {
+    const input = document.querySelector(`.quick-stock-input[data-id="${productId}"]`);
+    const removeQty = parseInt(input?.value) || 0;
+    if (removeQty <= 0) {
+      Toast.warning(I18n.t('error_invalid_amount'));
+      return;
+    }
+
+    const product = await appDb.products.get(parseInt(productId));
+    if (!product) return;
+
+    if (removeQty > product.quantity) {
+      Toast.warning(I18n.t('error_insufficient_stock'));
+      return;
+    }
+
+    const newQty = product.quantity - removeQty;
+    await appDb.products.update(parseInt(productId), {
+      quantity: newQty,
+      status: dbHelpers.getProductStatus(newQty),
+      syncStatus: 'pending',
+      updatedAt: new Date().toISOString()
+    });
+    await dbHelpers.addToSyncQueue('update', 'products', parseInt(productId));
+
+    Toast.success(`-${removeQty} ${I18n.t('success_stock_removed')}`);
     Sync.updatePendingCount();
     Router.navigate(window.location.hash);
   }
