@@ -42,13 +42,13 @@ const TransactionsPage = (() => {
           : statusBadge;
         return `
           <tr data-status="${t.paymentStatus}">
-            <td><strong>${t.billNo}</strong></td>
-            <td>${I18n.formatDate(t.date)}</td>
-            <td>${customerMap[t.customerId] || '-'}</td>
-            <td><strong>${I18n.formatCurrencyShort(t.totalAmount)}</strong></td>
-            <td>${I18n.formatCurrencyShort(t.paidAmount)}</td>
-            <td>${clickableStatus}</td>
-            <td>
+            <td data-label="${I18n.t('bill_no')}"><strong>${t.billNo}</strong></td>
+            <td data-label="${I18n.t('date')}">${I18n.formatDate(t.date)}</td>
+            <td data-label="${I18n.t('customer')}">${customerMap[t.customerId] || '-'}</td>
+            <td data-label="${I18n.t('total_amount')}"><strong>${I18n.formatCurrencyShort(t.totalAmount)}</strong></td>
+            <td data-label="${I18n.t('paid_amount')}">${I18n.formatCurrencyShort(t.paidAmount)}</td>
+            <td data-label="${I18n.t('payment_status')}">${clickableStatus}</td>
+            <td data-label="">
               <button class="btn btn-ghost btn-sm" data-action="view-receipt" data-id="${t.id}">
                 <span>👁</span> <span data-i18n="view">View</span>
               </button>
@@ -66,13 +66,16 @@ const TransactionsPage = (() => {
           <h2 data-i18n="transactions_title">Transactions</h2>
           <p data-i18n="transactions_subtitle">View and create billing transactions</p>
         </div>
-        ${canCreate ? `
-          <div class="page-header-actions">
+        <div class="page-header-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-export-csv-tx">
+            <span>📥</span> <span data-i18n="export_csv">${I18n.t('export_csv')}</span>
+          </button>
+          ${canCreate ? `
             <button class="btn btn-primary" id="btn-new-transaction">
               <span>+</span> <span data-i18n="create_transaction">Create Transaction</span>
             </button>
-          </div>
-        ` : ''}
+          ` : ''}
+        </div>
       </div>
 
       <div class="actions-row">
@@ -90,7 +93,7 @@ const TransactionsPage = (() => {
 
       <div class="card">
         <div class="table-container">
-          <table class="data-table">
+          <table class="data-table responsive-cards">
             <thead>
               <tr>
                 <th data-i18n="bill_no">Bill No.</th>
@@ -316,6 +319,10 @@ const TransactionsPage = (() => {
   }
 
   function handleClick(e) {
+    if (e.target.closest('#btn-export-csv-tx')) {
+      exportTransactionsCSV();
+      return;
+    }
     if (e.target.closest('#btn-new-transaction')) {
       window.location.hash = '#/transactions?new=1';
       return;
@@ -600,6 +607,8 @@ const TransactionsPage = (() => {
   }
 
   async function saveTransaction() {
+    const saveBtn = document.getElementById('btn-save-transaction');
+    setButtonLoading(saveBtn, true);
     const billNo = document.getElementById('bill-no')?.value;
     const date = document.getElementById('bill-date')?.value;
     const customerId = parseInt(document.getElementById('bill-customer')?.value);
@@ -607,12 +616,14 @@ const TransactionsPage = (() => {
 
     if (!customerId) {
       Toast.warning(I18n.t('error_select_customer'));
+      setButtonLoading(saveBtn, false);
       return;
     }
 
     const validItems = billItems.filter(item => item.productId && item.qty > 0 && item.rate > 0);
     if (validItems.length === 0) {
       Toast.warning(I18n.t('error_add_items'));
+      setButtonLoading(saveBtn, false);
       return;
     }
 
@@ -659,6 +670,7 @@ const TransactionsPage = (() => {
       }
     }
 
+    setButtonLoading(saveBtn, false);
     Toast.success(I18n.t('success_transaction_saved'));
     Sync.updatePendingCount();
     window.location.hash = `#/receipt/${txId}`;
@@ -694,6 +706,20 @@ const TransactionsPage = (() => {
     document.getElementById('inline-customer-modal')?.classList.remove('active');
     Toast.success(I18n.t('success_customer_added'));
     Sync.updatePendingCount();
+  }
+
+  async function exportTransactionsCSV() {
+    const transactions = await appDb.transactions.toArray();
+    const customers = await appDb.customers.toArray();
+    const customerMap = {};
+    customers.forEach(c => customerMap[c.id] = c.name);
+    const headers = ['Bill No', 'Date', 'Customer', 'Total', 'Paid', 'Due', 'Status'];
+    const rows = transactions.map(t => [
+      t.billNo, t.date, customerMap[t.customerId] || '-',
+      t.totalAmount, t.paidAmount, t.dueAmount, t.paymentStatus
+    ]);
+    exportTableToCSV('transactions.csv', headers, rows);
+    Toast.success(I18n.t('export_success'));
   }
 
   function handleSearch(e) {

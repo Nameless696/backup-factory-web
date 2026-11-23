@@ -213,5 +213,41 @@
   "admin_only": "Admin access required",
   "staff_restricted": "This feature is restricted",
   "role_admin": "Administrator",
-  "role_staff": "Staff Member"
+  "role_staff": "Staff Member",
+
+  "confirm_title": "Are you sure?",
+  "confirm_yes": "Yes, Continue",
+  "confirm_delete_title": "Delete Item?",
+  "confirm_delete_msg": "This action cannot be undone. The item will be permanently removed.",
+
+  "export_csv": "Export CSV",
+  "export_success": "Data exported successfully!",
+
+  "date_today": "Today",
+  "date_this_week": "This Week",
+  "date_this_month": "This Month",
+  "date_all_time": "All Time",
+  "date_custom": "Custom",
+  "date_from": "From",
+  "date_to": "To",
+
+  "customer_address": "Address",
+  "share_whatsapp": "Share via WhatsApp",
+  "download_image": "Download Image",
+
+  "show_password": "Show password",
+  "hide_password": "Hide password",
+
+  "low_stock_alert_title": "Stock Alert",
+  "items_critically_low": "items are critically low or out of stock",
+  "view_all_stock": "View Stock →",
+
+  "total_stock_value": "Total Stock Value",
+  "week_trend": "vs last week",
+
+  "no_results": "No results found",
+  "try_different_search": "Try a different search term",
+
+  "shortcut_new_transaction": "New Transaction",
+  "shortcut_search": "Search"
 }

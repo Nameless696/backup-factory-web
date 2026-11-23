@@ -28,11 +28,11 @@ const StockPage = (() => {
         const unitKey = `unit_${p.unit}`;
         return `
           <tr>
-            <td><strong>${p.name}</strong></td>
-            <td><span data-i18n="${categoryKey}">${I18n.t(categoryKey)}</span></td>
-            <td>${I18n.formatNumber(p.quantity)} <span class="text-muted" data-i18n="${unitKey}">${I18n.t(unitKey)}</span></td>
-            <td>${I18n.formatCurrencyShort(p.price)}</td>
-            <td>${statusInfo}</td>
+            <td data-label="${I18n.t('product_name')}"><strong>${p.name}</strong></td>
+            <td data-label="${I18n.t('category')}"><span data-i18n="${categoryKey}">${I18n.t(categoryKey)}</span></td>
+            <td data-label="${I18n.t('quantity')}">${I18n.formatNumber(p.quantity)} <span class="text-muted" data-i18n="${unitKey}">${I18n.t(unitKey)}</span></td>
+            <td data-label="${I18n.t('price_rate')}">${I18n.formatCurrencyShort(p.price)}</td>
+            <td data-label="${I18n.t('status')}">${statusInfo}</td>
             ${canAdjust ? `
               <td>
                 <div class="product-actions stock-adjust-actions">
@@ -76,6 +76,10 @@ const StockPage = (() => {
 
       <div class="stock-status-bar">
         <div class="stock-status-chip">
+          <span class="badge badge-primary"><span class="badge-dot"></span> <span data-i18n="total_stock_value">${I18n.t('total_stock_value')}</span></span>
+          <span class="count">${I18n.formatCurrencyShort(totalValue)}</span>
+        </div>
+        <div class="stock-status-chip">
           <span class="badge badge-success"><span class="badge-dot"></span> <span data-i18n="in_stock">In Stock</span></span>
           <span class="count">${I18n.formatNumber(inStock)}</span>
         </div>
@@ -98,7 +102,7 @@ const StockPage = (() => {
 
       <div class="card">
         <div class="table-container">
-          <table class="data-table" id="stock-table">
+          <table class="data-table responsive-cards" id="stock-table">
             <thead>
               <tr>
                 <th data-i18n="product_name">Product Name</th>
@@ -253,6 +257,8 @@ const StockPage = (() => {
   }
 
   async function saveProduct() {
+    const saveBtn = document.getElementById('btn-save-product');
+    setButtonLoading(saveBtn, true);
     const name = document.getElementById('product-name').value.trim();
     const category = document.getElementById('product-category').value;
     const unit = document.getElementById('product-unit').value;
@@ -262,6 +268,7 @@ const StockPage = (() => {
 
     if (!name || price <= 0) {
       Toast.warning(I18n.t('error_fill_required'));
+      setButtonLoading(saveBtn, false);
       return;
     }
 
@@ -284,6 +291,7 @@ const StockPage = (() => {
       Toast.success(I18n.t('success_product_added'));
     }
 
+    setButtonLoading(saveBtn, false);
     closeProductModal();
     Sync.updatePendingCount();
     Router.navigate(window.location.hash);
@@ -350,7 +358,12 @@ const StockPage = (() => {
   }
 
   async function deleteProduct(productId) {
-    if (!confirm(I18n.t('confirm_delete'))) return;
+    const confirmed = await Confirm.show(I18n.t('confirm_delete_msg'), {
+      title: I18n.t('confirm_delete_title'),
+      confirmText: I18n.t('delete'),
+      variant: 'danger'
+    });
+    if (!confirmed) return;
     await appDb.products.delete(parseInt(productId));
     await dbHelpers.addToSyncQueue('delete', 'products', parseInt(productId));
     Toast.success(I18n.t('success_product_deleted'));

@@ -59,6 +59,29 @@
   // 5. Setup global UI handlers
   setupGlobalHandlers();
 
+  // 5b. Global keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // Escape closes any open modal
+    if (e.key === 'Escape') {
+      const modal = document.querySelector('.modal-overlay.active');
+      if (modal) {
+        modal.classList.remove('active');
+        return;
+      }
+    }
+    // Alt+N → new transaction
+    if (e.altKey && e.key === 'n') {
+      e.preventDefault();
+      if (Auth.getCurrentUser()) window.location.hash = '#/transactions?new=1';
+    }
+    // Alt+S → focus search on current page
+    if (e.altKey && e.key === 's') {
+      e.preventDefault();
+      const search = document.querySelector('#transaction-search, #stock-search, #customer-search, #payment-search');
+      if (search) search.focus();
+    }
+  });
+
   // 6. Update user info in sidebar
   updateSidebarUser();
 

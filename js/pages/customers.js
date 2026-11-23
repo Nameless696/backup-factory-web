@@ -32,11 +32,11 @@ const CustomersPage = (() => {
         const stats = customerStats[c.id] || { totalPurchases: 0, pendingDues: 0 };
         return `
           <tr class="clickable-row" data-action="view-customer" data-id="${c.id}">
-            <td><strong>${c.name}</strong> ${c.isFrequent ? '<span class="badge badge-primary" style="font-size:0.65rem;padding:2px 6px;">★</span>' : ''}</td>
-            <td>${c.phone || '-'}</td>
-            <td>${c.panNo || '-'}</td>
-            <td class="customer-purchases">${I18n.formatCurrencyShort(stats.totalPurchases)}</td>
-            <td class="${stats.pendingDues > 0 ? 'customer-dues' : 'customer-dues zero'}">${I18n.formatCurrencyShort(stats.pendingDues)}</td>
+            <td data-label="${I18n.t('customer_name')}"><strong>${c.name}</strong> ${c.isFrequent ? '<span class="badge badge-primary" style="font-size:0.65rem;padding:2px 6px;">★</span>' : ''}</td>
+            <td data-label="${I18n.t('phone')}">${c.phone || '-'}</td>
+            <td data-label="${I18n.t('pan_no')}">${c.panNo || '-'}</td>
+            <td data-label="${I18n.t('total_purchases')}" class="customer-purchases">${I18n.formatCurrencyShort(stats.totalPurchases)}</td>
+            <td data-label="${I18n.t('pending_dues_col')}" class="${stats.pendingDues > 0 ? 'customer-dues' : 'customer-dues zero'}">${I18n.formatCurrencyShort(stats.pendingDues)}</td>
             <td>
               <div class="product-actions" onclick="event.stopPropagation()">
                 ${canEdit ? `<button class="btn btn-secondary btn-sm" data-action="edit-customer" data-id="${c.id}">✏️</button>` : ''}
@@ -72,7 +72,7 @@ const CustomersPage = (() => {
 
       <div class="card">
         <div class="table-container">
-          <table class="data-table">
+          <table class="data-table responsive-cards">
             <thead>
               <tr>
                 <th data-i18n="customer_name">Customer Name</th>
@@ -113,6 +113,10 @@ const CustomersPage = (() => {
                   <label class="form-label" data-i18n="pan_no">PAN No.</label>
                   <input type="text" class="form-input" id="customer-pan">
                 </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" data-i18n="customer_address">Address</label>
+                <input type="text" class="form-input" id="customer-address" placeholder="">
               </div>
               <div class="form-group">
                 <label class="form-label">
@@ -282,6 +286,7 @@ const CustomersPage = (() => {
           <div class="cdp-meta">
             ${customer.phone ? `<span>📞 ${customer.phone}</span>` : ''}
             ${customer.panNo ? `<span>📋 ${customer.panNo}</span>` : ''}
+            ${customer.address ? `<span>📍 ${customer.address}</span>` : ''}
             ${customer.isFrequent ? `<span class="badge badge-primary">★ ${I18n.t('is_frequent')}</span>` : ''}
           </div>
         </div>
@@ -344,6 +349,7 @@ const CustomersPage = (() => {
       document.getElementById('customer-name-input').value = customer.name;
       document.getElementById('customer-phone').value = customer.phone || '';
       document.getElementById('customer-pan').value = customer.panNo || '';
+      document.getElementById('customer-address').value = customer.address || '';
       document.getElementById('customer-frequent').checked = customer.isFrequent || false;
     } else {
       title.setAttribute('data-i18n', 'add_customer_title');
@@ -365,6 +371,7 @@ const CustomersPage = (() => {
     const phone = document.getElementById('customer-phone').value.trim();
     const panNo = document.getElementById('customer-pan').value.trim();
     const isFrequent = document.getElementById('customer-frequent').checked;
+    const address = document.getElementById('customer-address')?.value.trim() || '';
     const editId = document.getElementById('customer-edit-id').value;
 
     if (!name) {
@@ -376,14 +383,14 @@ const CustomersPage = (() => {
 
     if (editId) {
       await appDb.customers.update(parseInt(editId), {
-        name, phone, panNo, isFrequent,
+        name, phone, panNo, isFrequent, address,
         syncStatus: 'pending', updatedAt: now
       });
       await dbHelpers.addToSyncQueue('update', 'customers', parseInt(editId));
       Toast.success(I18n.t('success_customer_updated'));
     } else {
       const id = await appDb.customers.add({
-        name, phone, panNo, isFrequent,
+        name, phone, panNo, isFrequent, address,
         syncStatus: 'pending', updatedAt: now
       });
       await dbHelpers.addToSyncQueue('create', 'customers', id);
@@ -401,7 +408,12 @@ const CustomersPage = (() => {
   }
 
   async function deleteCustomer(customerId) {
-    if (!confirm(I18n.t('confirm_delete'))) return;
+    const confirmed = await Confirm.show(I18n.t('confirm_delete_msg'), {
+      title: I18n.t('confirm_delete_title'),
+      confirmText: I18n.t('delete'),
+      variant: 'danger'
+    });
+    if (!confirmed) return;
     await appDb.customers.delete(parseInt(customerId));
     await dbHelpers.addToSyncQueue('delete', 'customers', parseInt(customerId));
     Toast.success(I18n.t('success_customer_deleted'));

@@ -25,13 +25,13 @@ const AdminPaymentsPage = (() => {
         const canPay = t.dueAmount > 0;
         return `
           <tr data-status="${t.paymentStatus}">
-            <td><strong>${t.billNo}</strong></td>
-            <td>${customerMap[t.customerId] || '-'}</td>
-            <td>${I18n.formatDate(t.date)}</td>
-            <td><strong>${I18n.formatCurrencyShort(t.totalAmount)}</strong></td>
-            <td>${I18n.formatCurrencyShort(t.paidAmount)}</td>
-            <td class="${t.dueAmount > 0 ? 'customer-dues' : 'customer-dues zero'}">${I18n.formatCurrencyShort(t.dueAmount)}</td>
-            <td>${statusBadge}</td>
+            <td data-label="${I18n.t('bill_no')}"><strong>${t.billNo}</strong></td>
+            <td data-label="${I18n.t('customer')}">${customerMap[t.customerId] || '-'}</td>
+            <td data-label="${I18n.t('date')}">${I18n.formatDate(t.date)}</td>
+            <td data-label="${I18n.t('total_amount')}"><strong>${I18n.formatCurrencyShort(t.totalAmount)}</strong></td>
+            <td data-label="${I18n.t('paid_amount')}">${I18n.formatCurrencyShort(t.paidAmount)}</td>
+            <td data-label="${I18n.t('due_amount')}" class="${t.dueAmount > 0 ? 'customer-dues' : 'customer-dues zero'}">${I18n.formatCurrencyShort(t.dueAmount)}</td>
+            <td data-label="${I18n.t('payment_status')}">${statusBadge}</td>
             <td>
               ${canPay ? `
                 <button class="btn btn-success btn-sm" data-action="open-payment-modal" data-id="${t.id}" data-due="${t.dueAmount}">
@@ -50,6 +50,11 @@ const AdminPaymentsPage = (() => {
           <h2 data-i18n="admin_payments_title">Payment Management</h2>
           <p data-i18n="admin_payments_subtitle">Track and record customer payments</p>
         </div>
+        <div class="page-header-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-export-csv-payments">
+            <span>📥</span> <span data-i18n="export_csv">${I18n.t('export_csv')}</span>
+          </button>
+        </div>
       </div>
 
       <div class="actions-row">
@@ -67,7 +72,7 @@ const AdminPaymentsPage = (() => {
 
       <div class="card">
         <div class="table-container">
-          <table class="data-table">
+          <table class="data-table responsive-cards">
             <thead>
               <tr>
                 <th data-i18n="bill_no">Bill No.</th>
@@ -129,6 +134,11 @@ const AdminPaymentsPage = (() => {
   }
 
   function handleClick(e) {
+    if (e.target.closest('#btn-export-csv-payments')) {
+      exportPaymentsCSV();
+      return;
+    }
+
     const action = e.target.closest('[data-action]')?.dataset.action;
 
     if (action === 'open-payment-modal') {
@@ -164,19 +174,23 @@ const AdminPaymentsPage = (() => {
   }
 
   async function confirmPayment() {
+    const payBtn = document.getElementById('btn-confirm-payment');
+    setButtonLoading(payBtn, true);
     const txId = parseInt(document.getElementById('payment-tx-id').value);
     const amount = parseFloat(document.getElementById('payment-amount-input').value) || 0;
 
     if (amount <= 0) {
       Toast.warning(I18n.t('error_invalid_amount'));
+      setButtonLoading(payBtn, false);
       return;
     }
 
     const tx = await appDb.transactions.get(txId);
-    if (!tx) return;
+    if (!tx) { setButtonLoading(payBtn, false); return; }
 
     if (amount > tx.dueAmount) {
       Toast.warning(I18n.t('error_amount_exceeds'));
+      setButtonLoading(payBtn, false);
       return;
     }
 
@@ -196,10 +210,25 @@ const AdminPaymentsPage = (() => {
 
     await dbHelpers.addToSyncQueue('update', 'transactions', txId);
 
+    setButtonLoading(payBtn, false);
     closePaymentModal();
     Toast.success(I18n.t('success_payment_recorded'));
     Sync.updatePendingCount();
     Router.navigate(window.location.hash);
+  }
+
+  async function exportPaymentsCSV() {
+    const transactions = await appDb.transactions.toArray();
+    const customers = await appDb.customers.toArray();
+    const customerMap = {};
+    customers.forEach(c => customerMap[c.id] = c.name);
+    const headers = ['Bill No', 'Customer', 'Date', 'Total', 'Paid', 'Due', 'Status'];
+    const rows = transactions.map(t => [
+      t.billNo, customerMap[t.customerId] || '-', t.date,
+      t.totalAmount, t.paidAmount, t.dueAmount, t.paymentStatus
+    ]);
+    exportTableToCSV('payments.csv', headers, rows);
+    Toast.success(I18n.t('export_success'));
   }
 
   function handleSearch(e) {

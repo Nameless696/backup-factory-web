@@ -53,6 +53,9 @@ const ReceiptPage = (() => {
           <button class="btn btn-primary" id="btn-print-receipt">
             <span>🖨️</span> <span data-i18n="print_receipt">Print Receipt</span>
           </button>
+          <button class="btn btn-whatsapp" id="btn-share-whatsapp">
+            <span>📱</span> <span data-i18n="share_whatsapp">Share via WhatsApp</span>
+          </button>
         </div>
 
         <div class="receipt" id="receipt-printable">
@@ -96,8 +99,14 @@ const ReceiptPage = (() => {
             </div>
             <div class="receipt-meta-item" style="grid-column:1/-1;">
               <span class="receipt-meta-label" data-i18n="buyer_address">${I18n.t('buyer_address')}:</span>
-              <span class="receipt-meta-value">-</span>
+              <span class="receipt-meta-value">${customer?.address || '-'}</span>
             </div>
+            ${customer?.panNo ? `
+            <div class="receipt-meta-item" style="grid-column:1/-1;">
+              <span class="receipt-meta-label" data-i18n="pan_no">${I18n.t('pan_no')}:</span>
+              <span class="receipt-meta-value">${customer.panNo}</span>
+            </div>
+            ` : ''}
           </div>
 
           <!-- Items Table (matching physical bill format) -->
@@ -164,10 +173,23 @@ const ReceiptPage = (() => {
     `;
   }
 
-  function afterRender() {
+  function afterRender(params) {
     const printBtn = document.getElementById('btn-print-receipt');
     if (printBtn) {
       printBtn.addEventListener('click', () => window.print());
+    }
+
+    const whatsappBtn = document.getElementById('btn-share-whatsapp');
+    if (whatsappBtn) {
+      whatsappBtn.addEventListener('click', async () => {
+        const txId = parseInt(params?.id);
+        const tx = await appDb.transactions.get(txId);
+        if (!tx) return;
+        const customer = await appDb.customers.get(tx.customerId);
+        const items = (tx.items || []).map(i => `${i.name} ×${i.qty} = Rs.${i.total}`).join('%0A');
+        const text = `*${I18n.t('app_name')}*%0A${I18n.t('bill_no')}: ${tx.billNo}%0A${I18n.t('date')}: ${tx.date}%0A${I18n.t('buyer_name')}: ${customer?.name || '-'}%0A%0A${items}%0A%0A*${I18n.t('grand_total')}: Rs.${tx.totalAmount}*%0A${I18n.t('paid_amount')}: Rs.${tx.paidAmount}%0A${I18n.t('due_amount')}: Rs.${tx.dueAmount}`;
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+      });
     }
   }
 

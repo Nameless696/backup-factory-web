@@ -48,7 +48,7 @@ const DashboardPage = (() => {
         const stats = customerStats[c.id] || { totalPurchases: 0, pendingDues: 0, count: 0 };
         return `
           <div class="frequent-customer-card" data-action="view-customer-detail" data-customer-id="${c.id}">
-            <div class="fc-avatar">${c.name.charAt(0).toUpperCase()}</div>
+            <div class="fc-avatar">${c.name.split(' ').map(w => w.charAt(0)).slice(0, 2).join('').toUpperCase()}</div>
             <div class="fc-info">
               <div class="fc-name">${c.name}</div>
               <div class="fc-phone">${c.phone || '-'}</div>
@@ -95,12 +95,12 @@ const DashboardPage = (() => {
         const statusBadge = getStatusBadge(t.paymentStatus);
         return `
           <tr>
-            <td><strong>${t.billNo}</strong></td>
-            <td>${I18n.formatDate(t.date)}</td>
-            <td>${customerMap[t.customerId] || '-'}</td>
-            <td><strong>${I18n.formatCurrencyShort(t.totalAmount)}</strong></td>
-            <td>${statusBadge}</td>
-            <td>
+            <td data-label="${I18n.t('bill_no')}"><strong>${t.billNo}</strong></td>
+            <td data-label="${I18n.t('date')}">${I18n.formatDate(t.date)}</td>
+            <td data-label="${I18n.t('customer')}">${customerMap[t.customerId] || '-'}</td>
+            <td data-label="${I18n.t('total_amount')}"><strong>${I18n.formatCurrencyShort(t.totalAmount)}</strong></td>
+            <td data-label="${I18n.t('payment_status')}">${statusBadge}</td>
+            <td data-label="">
               <button class="btn btn-ghost btn-sm" data-action="view-receipt" data-id="${t.id}">
                 <span>👁</span> <span data-i18n="view">View</span>
               </button>
@@ -117,6 +117,19 @@ const DashboardPage = (() => {
           <p data-i18n="dashboard_subtitle">Overview of your factory operations</p>
         </div>
       </div>
+
+      ${products.filter(p => p.quantity <= 3).length > 0 ? `
+        <div class="low-stock-alert">
+          <div class="low-stock-alert-content">
+            <span class="low-stock-alert-icon">⚠️</span>
+            <div>
+              <strong data-i18n="low_stock_alert_title">${I18n.t('low_stock_alert_title')}</strong>
+              <span>${I18n.formatNumber(products.filter(p => p.quantity <= 3).length)} ${I18n.t('items_critically_low')}</span>
+            </div>
+          </div>
+          <a href="#/stock" class="low-stock-alert-link" data-i18n="view_all_stock">${I18n.t('view_all_stock')}</a>
+        </div>
+      ` : ''}
 
       <div class="stats-grid">
         <div class="stat-card primary clickable-stat" data-action="stat-detail" data-stat="todays-sales">
@@ -183,7 +196,7 @@ const DashboardPage = (() => {
           <div class="card-title" data-i18n="recent_transactions">Recent Transactions</div>
         </div>
         <div class="table-container">
-          <table class="data-table">
+          <table class="data-table responsive-cards">
             <thead>
               <tr>
                 <th data-i18n="bill_no">Bill No.</th>
@@ -632,7 +645,7 @@ const DashboardPage = (() => {
 
     body.innerHTML = `
       <div class="customer-detail-profile">
-        <div class="cdp-avatar">${customer.name.charAt(0).toUpperCase()}</div>
+        <div class="cdp-avatar">${customer.name.split(' ').map(w => w.charAt(0)).slice(0, 2).join('').toUpperCase()}</div>
         <div class="cdp-info">
           <h3 class="cdp-name">${customer.name}</h3>
           <div class="cdp-meta">

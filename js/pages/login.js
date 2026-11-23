@@ -4,6 +4,7 @@
 
 const LoginPage = (() => {
   function render() {
+    const savedUsername = localStorage.getItem('last_username') || '';
     return `
       <div class="login-card">
         <div class="login-header">
@@ -14,11 +15,14 @@ const LoginPage = (() => {
         <form class="login-form" id="login-form">
           <div class="form-group">
             <label data-i18n="login_username">Username</label>
-            <input type="text" id="login-username" class="form-input" data-i18n="login_username" autocomplete="username" required>
+            <input type="text" id="login-username" class="form-input" data-i18n="login_username" autocomplete="username" value="${savedUsername}" required>
           </div>
           <div class="form-group">
             <label data-i18n="login_password">Password</label>
-            <input type="password" id="login-password" class="form-input" data-i18n="login_password" autocomplete="current-password" required>
+            <div class="password-wrapper">
+              <input type="password" id="login-password" class="form-input" data-i18n="login_password" autocomplete="current-password" required>
+              <button type="button" class="btn-show-password" id="btn-toggle-password" title="${I18n.t('show_password')}">👁</button>
+            </div>
           </div>
           <div class="login-error" id="login-error"></div>
           <button type="submit" class="login-btn" data-i18n="login_btn">Sign In</button>
@@ -35,9 +39,26 @@ const LoginPage = (() => {
     if (form) {
       form.addEventListener('submit', handleLogin);
     }
-    // Focus username
+
+    // Password toggle
+    const toggleBtn = document.getElementById('btn-toggle-password');
+    const passwordInput = document.getElementById('login-password');
+    if (toggleBtn && passwordInput) {
+      toggleBtn.addEventListener('click', () => {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        toggleBtn.textContent = isPassword ? '🙈' : '👁';
+        toggleBtn.title = isPassword ? I18n.t('hide_password') : I18n.t('show_password');
+      });
+    }
+
+    // Focus: if username is saved, focus password; else focus username
     const usernameInput = document.getElementById('login-username');
-    if (usernameInput) setTimeout(() => usernameInput.focus(), 100);
+    if (usernameInput && usernameInput.value) {
+      setTimeout(() => passwordInput?.focus(), 100);
+    } else {
+      setTimeout(() => usernameInput?.focus(), 100);
+    }
   }
 
   function handleLogin(e) {
@@ -56,8 +77,8 @@ const LoginPage = (() => {
 
     const result = Auth.login(username, password);
     if (result.success) {
+      localStorage.setItem('last_username', username);
       window.location.hash = '#/dashboard';
-      // Update sidebar user info
       setTimeout(() => {
         updateUserInfo();
         Sync.updateStatus();
