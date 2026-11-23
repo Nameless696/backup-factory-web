@@ -530,16 +530,17 @@
    ============================================ */
 .frequent-customers-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
   padding: 0 20px 20px;
 }
 
 .frequent-customer-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
   align-items: center;
   gap: 14px;
-  padding: 16px;
+  padding: 16px 18px;
   background: var(--bg-tertiary);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-light);
@@ -558,8 +559,8 @@
 }
 
 .fc-avatar {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-full);
   background: linear-gradient(135deg, var(--primary-400), var(--primary-600));
   color: white;
@@ -567,13 +568,16 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: var(--text-lg);
+  font-size: var(--text-sm);
   flex-shrink: 0;
+  letter-spacing: 0.5px;
+  overflow: hidden;
 }
 
 .fc-info {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .fc-name {
@@ -583,11 +587,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 2px;
 }
 
 .fc-phone {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fc-stats {
@@ -595,19 +603,22 @@
   flex-direction: column;
   gap: 4px;
   text-align: right;
+  flex-shrink: 0;
 }
 
 .fc-stat-label {
-  font-size: 0.625rem;
+  font-size: 0.6rem;
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .fc-stat-value {
   font-weight: 700;
   font-size: var(--text-sm);
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .fc-stat.due .fc-stat-value {
@@ -1062,39 +1073,34 @@
   flex-wrap: wrap;
 }
 
+/* Search bar — uses components.css position:relative approach.
+   Override only the bits that differ on pages. */
 .search-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0 14px;
+  position: relative;
   flex: 1;
   max-width: 400px;
-  transition: border-color var(--transition-fast);
 }
 
-.search-bar:focus-within {
+.search-bar:focus-within .form-input {
   border-color: var(--primary-400);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-.search-bar-icon {
-  font-size: 1rem;
-  opacity: 0.6;
-}
-
 .search-bar .form-input {
-  border: none;
-  background: none;
-  padding: 10px 0;
-  box-shadow: none;
+  padding-left: 42px;
+  width: 100%;
 }
 
-.search-bar .form-input:focus {
-  box-shadow: none;
-  border-color: transparent;
+.search-bar-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  color: var(--text-tertiary);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* ============================================
@@ -1288,6 +1294,18 @@
     grid-template-columns: 1fr;
     padding: 0 16px 16px;
   }
+
+  .frequent-customer-card {
+    grid-template-columns: 42px 1fr auto;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .fc-avatar {
+    width: 42px;
+    height: 42px;
+    font-size: var(--text-xs);
+  }
 }
 
 /* ============================================
@@ -1354,13 +1372,14 @@
 .low-stock-alert {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   padding: 14px 20px;
   background: var(--warning-50);
-  border: 1px solid var(--warning-100);
+  border: 1px solid var(--warning-200);
   border-radius: var(--radius-md);
   margin-bottom: 24px;
-  color: var(--warning-600);
+  color: var(--warning-700);
   font-size: var(--text-sm);
   font-weight: 500;
   animation: fadeInPage 0.35s ease;
@@ -1371,40 +1390,53 @@
   border-color: rgba(245, 158, 11, 0.2);
 }
 
-.low-stock-alert-icon {
-  font-size: 1.3rem;
-  flex-shrink: 0;
-}
-
-.low-stock-alert-text {
+.low-stock-alert-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex: 1;
-  line-height: var(--leading-normal);
+  min-width: 0;
 }
 
-.low-stock-alert-items {
+.low-stock-alert-content strong {
+  display: block;
   font-weight: 700;
+  margin-bottom: 2px;
 }
 
-.low-stock-alert-dismiss {
-  background: none;
-  border: none;
-  color: var(--warning-600);
-  cursor: pointer;
-  font-size: 1.1rem;
-  padding: 4px;
-  opacity: 0.6;
-  transition: opacity var(--transition-fast);
+.low-stock-alert-content span {
+  font-size: var(--text-xs);
+  opacity: 0.85;
 }
 
-.low-stock-alert-dismiss:hover {
-  opacity: 1;
+.low-stock-alert-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .low-stock-alert-link {
-  color: var(--warning-600);
+  color: var(--warning-700);
   font-weight: 700;
-  text-decoration: underline;
-  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--warning-100);
+  font-size: var(--text-xs);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.low-stock-alert-link:hover {
+  background: var(--warning-200);
+}
+
+[data-theme="dark"] .low-stock-alert-link {
+  background: rgba(245, 158, 11, 0.15);
+}
+[data-theme="dark"] .low-stock-alert-link:hover {
+  background: rgba(245, 158, 11, 0.25);
 }
 
 /* ============================================
